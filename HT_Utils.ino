@@ -1,0 +1,57 @@
+////////////////////////////////////////////////////////////////////////////////
+// HT_Utils.ino
+//
+// Project: HAB_Tracker
+// Author:  infaddict
+// Date:    February 2015
+// Desc:    General purpose routines
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+// join4Bytes()
+// Joins 4 bytes/unsigned chars into a long and returns it
+////////////////////////////////////////////////////////////////////////////////
+long join4Bytes(unsigned char data[])
+{
+  union long_union 
+  {
+    int32_t dword;
+    uint8_t  byte[4];
+  } longUnion;
+
+  longUnion.byte[0] = *data;
+  longUnion.byte[1] = *(data+1);
+  longUnion.byte[2] = *(data+2);
+  longUnion.byte[3] = *(data+3);
+  return(longUnion.dword);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// join2Bytes()
+// Joins 2 bytes/unsigned chars into a short and returns it
+////////////////////////////////////////////////////////////////////////////////
+short join2Bytes(unsigned char data[])
+{
+  union long_union 
+  {
+    int16_t dword;
+    uint8_t  byte[2];
+  } longUnion;
+
+  longUnion.byte[0] = *data;
+  longUnion.byte[1] = *(data+1);
+  return(longUnion.dword);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// freeRam()
+// Returns the amount of freeRam in bytes
+////////////////////////////////////////////////////////////////////////////////
+// Return the free RAM
+int freeRam(void)
+{
+  extern int __heap_start, *__brkval; 
+  int v; 
+  return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval); 
+}
+
