@@ -9,16 +9,18 @@
 
 #include <Wire.h>
 #include "HT_GPS.h"
-const int RED_LED_PIN = 9;
-const int GREEN_LED_PIN = 8;
+const int RED_LED_PIN = 8;
+const int GREEN_LED_PIN = 7;
 unsigned long flightTime;
 unsigned long timeOfLock = 0;
 NAV_PVT navPVT;
-char dataString[80];
-char txString[80];
-unsigned int checkSum;
-char checkSumStr[6];
-unsigned int count=0;
+char dataString[95];
+char txString[95];
+boolean gpsLock=false;
+float intTemp;
+float extTemp;
+float voltage=7.12;
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // setup()
@@ -83,17 +85,36 @@ void setup()
 ////////////////////////////////////////////////////////////////////////////////
 void loop()
 {
-  //delay(1000);
+  delay(500);
   
-  sprintf(dataString,"$$INFCU1,%04u,RTTY TEST BEACON RTTY TEST BEACON",count); // Puts the text in the datastring
-  checkSum = gpsCRC16Checksum(dataString);  // Calculates the checksum for this datastring
-  sprintf(checkSumStr, "*%04X\n", checkSum);  // Format the checksum correctly
-  strcat(dataString,checkSumStr);  // Add the calculated checksum to end of string
-  count++;
+  intTemp = getInternalTemp();
+  extTemp = getExternalTemp();
+ 
+ //TEMP STUFF
+/*
+  navPVT.Valid = 255;
+  navPVT.Year = 2015;
+  navPVT.Month = 12;
+  navPVT.Day = 31;
+  navPVT.Hour = 23;
+  navPVT.Min = 59;
+  navPVT.Sec = 59;
+  gpsLock = true;
+  navPVT.Lat =  1799001234;
+  navPVT.Long = -1799040556;
+  navPVT.HeightMSL = 42492;
+  intTemp = -20.99;
+  extTemp = -46.05;
+
+  voltage = 3.39;  
+*/
+
+  setTXString(dataString);
+  Serial.println(dataString);
    
   // Convert time running in milliseconds to seconds
   flightTime = millis() * 0.001;
-    
+  
   // Send request for a NAV-PVT message (position, velocity, time)
   if (!sendUBX(reqNAV_PVT, sizeof(reqNAV_PVT)))
   {
@@ -111,6 +132,7 @@ void loop()
   // Check for GPS lock.  We consider anything more than 4 satellites as good
   if ((int)navPVT.FixType >= 3 && (int)navPVT.numSV > 4)
   {
+    gpsLock = true;
     if (timeOfLock == 0)
     {
       Serial.println("GPS LOCK !! GPS LOCK !! GPS LOCK !! GPS LOCK !!");
@@ -124,6 +146,10 @@ void loop()
         digitalWrite(GREEN_LED_PIN, LOW);
       }
     }
+  }
+  else
+  {
+    gpsLock = false;
   }
   
 }

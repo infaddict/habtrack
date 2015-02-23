@@ -15,8 +15,7 @@
 #define STOPBITS 2       // Either 1 or 2
 #define TXDELAY 0        // Delay between sentence TX's
 #define RTTY_BAUD 50     // Baud rate
-#define RADIO_PIN 10      // Pin must support PWM
-#define RADIO_FREQUENCY 434.075
+#define RADIO_PIN 9      // Pin must support PWM.  Pin 9 and 10 use TIMER1.
 
 // Volatile variables are modified inside the ISR
 volatile int txStatus=1;
@@ -33,9 +32,7 @@ volatile char txChar;
 ////////////////////////////////////////////////////////////////////////////////
 void setupRadio()
 {
-    pinMode(RADIO_PIN, OUTPUT);
-    // need to set the freqency here!!
-    
+    pinMode(RADIO_PIN, OUTPUT);    
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -67,29 +64,6 @@ void setupInterrupt()
   
   sei();          // enable global interrupts
 }
-
-////////////////////////////////////////////////////////////////////////////////
-// gpsCRC16Checksum()
-// Returns a CRC16 checksum for the provided string pointer
-////////////////////////////////////////////////////////////////////////////////
-uint16_t gpsCRC16Checksum (char *string)
-{
-  // Calculate a CRC16 checksum for the string parameter
-  size_t i;
-  uint16_t crc;
-  uint8_t c;
- 
-  crc = 0xFFFF;
- 
-  // Calculate checksum ignoring the first two $s
-  for (i = 5; i < strlen(string); i++)
-  {
-    c = string[i];
-    crc = _crc_xmodem_update (crc, c);
-  }
- 
-  return crc;
-} 
 
 ////////////////////////////////////////////////////////////////////////////////
 // rttyTxbit()
@@ -183,6 +157,5 @@ ISR(TIMER1_COMPA_vect)
     }
  
   }
-
   
 }

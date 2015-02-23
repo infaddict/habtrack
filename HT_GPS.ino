@@ -195,7 +195,7 @@ void parseUBX()
       i+=4;
       //navPVT.VAcc = join4Bytes(&UBXbuffer[i]) * 0.001;
       i+=4;
-   
+   /*
      Serial.println();
      Serial.print("Flight Time (s): ");
      Serial.print(flightTime);
@@ -232,10 +232,11 @@ void parseUBX()
       //Serial.print("  HAcc : ");      Serial.print(navPVT.HAcc);
       //Serial.print("  Vacc : ");      Serial.println(navPVT.VAcc);
       Serial.print("Internal Temp: ");
-  Serial.print(getInternalTemp());
+  Serial.print(intTemp);
   Serial.print("       External Temp: ");
-  Serial.println(getExternalTemp());
-      
+  Serial.println(extTemp);
+  
+      */
     }
   }
   
