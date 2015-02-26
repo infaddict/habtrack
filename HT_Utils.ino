@@ -55,12 +55,16 @@ int freeRam(void)
   return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval); 
 }
 
+////////////////////////////////////////////////////////////////////////////////
+// setTXString()
+// Prepares the message string to be sent via RTTY.  
+////////////////////////////////////////////////////////////////////////////////
 void setTXString(char *msg)
 {
   // Sentence format is comma separated:
   // $$payload    $$INFCU1
-  // Flight Time  000000 (seconds)
-  // Date         00000000 (YYYYMMDD)
+  // Sentence id  00000
+  // No of sats   00
   // Time         00:00:00 (hours, minutes, seconds)
   // Latitude     +-000.00000 (degrees)
   // Longtitude   +-000.00000 (degrees)
@@ -71,63 +75,53 @@ void setTXString(char *msg)
   
   unsigned int checkSum;
   char checkSumStr[5+1];
-  char cdate[8+1];
-  char ctime[8+1];
-  long left;
-  long right;
-  char clat[10+1];
-  char clon[10+1];
-  char calt[7+1];
-  char cintTemp[6+1];
-  char cextTemp[6+1];
+  //char ctime[8+1];
+  //long left;
+  //long right;
+  //char clat[10+1];
+  //char clon[10+1];
+  //char calt[7+1];
+  char cintTemp[5+1];
+  char cextTemp[5+1];
   char cvoltage[5+1];
 
-
-  if (isBitSet(navPVT.Valid, 2))  // checks for fully valid UTC date/time (3rd bit)
-  {
-    sprintf(cdate, "%04u%02u%02u", navPVT.Year, navPVT.Month, navPVT.Day);
-    sprintf(ctime, "%02u:%02u:%02u", navPVT.Hour, navPVT.Min, navPVT.Sec);
-  }
-  else
-  {
-    strcpy(cdate,"00000000");
-    strcpy(ctime,"00:00:00");
-  }
-
-  if (gpsLock && navPVT.Lat != 0.0 && navPVT.Long != 0.0)
-  {
-   left = navPVT.Lat / LatLongFactor;
-   right = abs((navPVT.Lat - (left * LatLongFactor)) / 100);
-   sprintf(clat, "%03li.%05lu", left, right);
-   
-   left = navPVT.Long / LatLongFactor;
-   right = abs((navPVT.Long - (left * LatLongFactor)) / 100);
-   sprintf(clon, "%03li.%05lu", left, right);  
-  
-   sprintf(calt, "%06li", navPVT.HeightMSL); 
-  }
-  else
-  {
-    strcpy(clat,"+000.00000");
-    strcpy(clon,"+000.00000");
-    strcpy(calt,"+000000");
-  }
-
-  dtostrf(intTemp, 2, 2, cintTemp);  
-  dtostrf(extTemp, 2, 2, cextTemp);    
+  // Always format the temperatures and voltage
+  dtostrf(intTemp, 2, 1, cintTemp);  
+  dtostrf(extTemp, 2, 1, cextTemp);    
   dtostrf(voltage, 2, 1, cvoltage);
 
-  sprintf(msg,"$$INFCU1,%06li,%s,%s,%s,%s,%s,%s,%s,%s",flightTime,cdate,ctime,clat,clon,calt,cintTemp,cextTemp,cvoltage);  
-  checkSum = gpsCRC16Checksum(msg);  // Calculates the checksum for this datastring
+    /*
+    sprintf(cdate, "%04u%02u%02u", gpsInfo.Year, gpsInfo.Month, gpsInfo.Day);
+    sprintf(ctime, "%02u:%02u:%02u", gpsInfo.Hour, gpsInfo.Min, gpsInfo.Sec);
+    
+   left = gpsInfo.Lat / LatLongFactor;
+   right = abs((gpsInfo.Lat - (left * LatLongFactor)) / 100);
+   sprintf(clat, "%03li.%05lu", left, right);
+   
+   left = gpsInfo.Long / LatLongFactor;
+   right = abs((gpsInfo.Long - (left * LatLongFactor)) / 100);
+   sprintf(clon, "%03li.%05lu", left, right);  
+  
+   sprintf(calt, "%06li", gpsInfo.HeightMSL); 
+   */
+  //sprintf(msg,"$$INFCU1,%4i,%2u,%02u:%02u:%02u,%10li,%10li,%6li,%s,%s,%s", sentenceId,  gpsInfo.numSV, gpsInfo.Hour, gpsInfo.Min, gpsInfo.Sec, gpsInfo.Lat, gpsInfo.Long, gpsInfo.HeightMSL, cintTemp, cextTemp, cvoltage);
+  
+  if (gpsLock)
+  {
+    // We have a good GPS lock so use GPS information to send via radio
+    sprintf(msg,"$$INFCU1,%i,%u,%02u:%02u:%02u,%li,%li,%li,%s,%s,%s", sentenceId,  gpsInfo.numSV, gpsInfo.Hour, gpsInfo.Min, gpsInfo.Sec, gpsInfo.Lat, gpsInfo.Long, gpsInfo.HeightMSL, cintTemp, cextTemp, cvoltage);
+  }
+  else
+  {
+    // We have no GPS lock, either because we've never had one or we've lost it, so use last known good info
+    sprintf(msg,"$$INFCU1,%i,%u,%02u:%02u:%02u,%li,%li,%li,%s,%s,%s", sentenceId,  gpsInfo.numSV, gpsInfo.Hour, gpsInfo.Min, gpsInfo.Sec, lastGoodFix.Lat, lastGoodFix.Long, lastGoodFix.HeightMSL, cintTemp, cextTemp, cvoltage);
+  }
+    
+  // Create a checksum and add to end of the sentence
+  checkSum = gpsCRC16Checksum(msg);  
   sprintf(checkSumStr, "*%04X\n", checkSum);  // Format the checksum correctly
-  strcat(msg,checkSumStr);  // Add the calculated checksum to end of string
+  strcat(msg,checkSumStr);  
 
-}
-
-
-bool isBitSet(unsigned char data, unsigned int bitindex)
-{
-    return (data & (1 << bitindex)) != 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -152,3 +146,4 @@ uint16_t gpsCRC16Checksum (char *string)
  
   return crc;
 } 
+

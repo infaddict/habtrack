@@ -8,14 +8,14 @@
 
 #include <Wire.h>  // required for I2C/DDC communication
 
-unsigned int  UBXstate = 0;
+byte UBXstate = 0;
 unsigned char Checksum_A = 0;
 unsigned char Checksum_B = 0;
 unsigned char UBXclass;
 unsigned char UBXid;
 unsigned char UBXlengthLSB;
 unsigned char UBXlengthMSB;
-unsigned int  UBXlength;
+byte UBXlength;
 unsigned char UBXpayloadIdx;
 unsigned char UBXbuffer[UBX_MAX_PAYLOAD];
 unsigned char UBXckA;
@@ -30,104 +30,130 @@ unsigned char UBXckB;
 // Returns true is all ok
 // Returns false if bad payload or checksum detected.
 ////////////////////////////////////////////////////////////////////////////////
-boolean readUBX()
+boolean checkForGPSData()
 {
-  unsigned char uChar;
+  long gpsTimeout = millis() + 3000;  // 3 second timeout waiting for data
+  boolean timeout = false;
+  boolean endOfMessage = false;
   
-  setGPSforRead();    // Request max buffer length from GPS
-  
-  while ( GPSdataAvailable() )
-  {
-    uChar = readGPSchar();  // Read 1 char (byte) from GPS
-    
-    //Serial.print(uChar,HEX);
-    //Serial.print("-");
-      
-    // Start the state machine to process the message bytes
-    switch(UBXstate)
+  // Loop looking for data until end of message or we reach timeout period
+  while(!endOfMessage && !timeout)
+  {   
+    if (millis() > gpsTimeout)
     {
-      case 0:    // Awaiting Sync Char 1
-        if (uChar == UBX_SYNC_CHAR1)
-        {
-          UBXstate++;
-        }
-        break;
-      case 1:    // Awauting Sync Char 2
-        if (uChar == UBX_SYNC_CHAR2)
-        {
-          UBXstate++;
-        }
-        else
-        {
-          UBXstate = 0;    // Wrong sequence so start again
-        }
-        break;
-      case 2:    // Awaiting Class
-        UBXclass = uChar;
-        UBXchecksum(UBXclass);
-        UBXstate++;
-        break;
-      case 3:    // Awaiting Id
-        UBXid = uChar;
-        UBXchecksum(UBXid);
-        UBXstate++;
-        break;
-      case 4:    // Awaiting Length LSB (little endian so LSB is first)
-        UBXlengthLSB = uChar;
-        UBXchecksum(UBXlengthLSB);
-        UBXstate++;       
-        break;
-      case 5:    // Awaiting Length MSB
-        UBXlengthMSB = uChar;
-        UBXchecksum(UBXlengthMSB);
-        UBXstate++;
-        UBXpayloadIdx = 0;
-        UBXlength = (unsigned int)(UBXlengthMSB << 8) | UBXlengthLSB;  // convert little endian MSB & LSB into integer
-        if (UBXlength >= UBX_MAX_PAYLOAD)
-        {
-          Serial.println("UBX PAYLOAD BAD LENGTH!!");
-          UBXstate=0;    // Bad data received so reset to start again
-          Checksum_A=0;
-          Checksum_B=0;
-          return false;
-        }
-        break;
-      case 6:    // Awaiting Payload
-        if (UBXpayloadIdx < UBXlength)
-        {
-          UBXbuffer[UBXpayloadIdx] = uChar;
-          UBXchecksum(uChar);
-          UBXpayloadIdx++;
-          if (UBXpayloadIdx == UBXlength)
-          {
-            UBXstate++;  // Just processed last byte of payload, so move o
-          }
-        }         
-        break;
-      case 7:    // Awaiting Checksum 1
-        UBXckA = uChar;
-        UBXstate++;
-        break;
-      case 8:    // Awaiting Checksum 2
-        UBXckB = uChar;
-        if ((Checksum_A == UBXckA) && (Checksum_B == UBXckB))    // Check the calculated checksums match actual checksums
-        {
-          parseUBX();
-        }
-        else
-        {
-          Serial.println("UBX PAYLOAD BAD CHECKSUM!!");
-          return false;
-        }
-        
-        UBXstate=0;    // Start again at 0
-        Checksum_A=0;
-        Checksum_B=0;
-        break;      
+      timeout = true;
     }
- 
-  }
+    
+    // If there is no GPS data available, request another buffers worth of data
+    if (!GPSdataAvailable())
+    {
+      setGPSforRead();
+    }
+    else
+    {
+      // There is GPS data available so read it until there is no more or end of message
+      unsigned char uChar;
+      while (GPSdataAvailable() && !endOfMessage)
+      {
+        uChar = readGPSchar();  // Read 1 char (byte) from GPS
+        
+        //Serial.print(uChar,HEX);
+        //Serial.print(" ");
+        
+        // Start the state machine to process the message bytes
+        switch(UBXstate)
+        {
+          case 0:    // Awaiting Sync Char 1
+            if (uChar == UBX_SYNC_CHAR1)
+            {
+              UBXstate++;
+            }
+            break;
+          case 1:    // Awauting Sync Char 2
+            if (uChar == UBX_SYNC_CHAR2)
+            {
+              UBXstate++;
+            }
+            else
+            {
+              UBXstate = 0;    // Wrong sequence so start again
+            }
+            break;
+          case 2:    // Awaiting Class
+            UBXclass = uChar;
+            UBXchecksum(UBXclass);
+            UBXstate++;
+            break;
+          case 3:    // Awaiting Id
+            UBXid = uChar;
+            UBXchecksum(UBXid);
+            UBXstate++;
+            break;
+          case 4:    // Awaiting Length LSB (little endian so LSB is first)
+            UBXlengthLSB = uChar;
+            UBXchecksum(UBXlengthLSB);
+            UBXstate++;       
+            break;
+          case 5:    // Awaiting Length MSB
+            UBXlengthMSB = uChar;
+            UBXchecksum(UBXlengthMSB);
+            UBXstate++;
+            UBXpayloadIdx = 0;
+            UBXlength = (byte)(UBXlengthMSB << 8) | UBXlengthLSB;  // convert little endian MSB & LSB into integer
+            if (UBXlength >= UBX_MAX_PAYLOAD)
+            {
+              writeLog(F("UBX PAYLOAD BAD LENGTH!!"));
+              UBXstate=0;    // Bad data received so reset to start again
+              Checksum_A=0;
+              Checksum_B=0;
+              return false;
+            }
+            break;
+          case 6:    // Awaiting Payload
+            if (UBXpayloadIdx < UBXlength)
+            {
+              UBXbuffer[UBXpayloadIdx] = uChar;
+              UBXchecksum(uChar);
+              UBXpayloadIdx++;
+              if (UBXpayloadIdx == UBXlength)
+              {
+                UBXstate++;  // Just processed last byte of payload, so move on
+              }
+            }         
+            break;
+          case 7:    // Awaiting Checksum 1
+            UBXckA = uChar;
+            UBXstate++;
+            break;
+          case 8:    // Awaiting Checksum 2
+            UBXckB = uChar;
+            if ((Checksum_A == UBXckA) && (Checksum_B == UBXckB))    // Check the calculated checksums match actual checksums
+            {
+              // Checksum is good so parse the message
+              parseUBX();
+              endOfMessage = true;
+            }
+            else
+            {
+              writeLog(F("UBX PAYLOAD BAD CHECKSUM!!"));
+              return false;
+            }
+            
+            UBXstate=0;    // Start again at 0
+            Checksum_A=0;
+            Checksum_B=0;
+            break;      
+        }
+              
+      } 
+    
+    }
+    
+  } // while !eom or !timeout
   
+  // Only when received all expected data with checksum do we stop
+  expectingGPSData = false;
+
   return true;  // everything ok
     
 }
@@ -137,106 +163,66 @@ boolean readUBX()
 // Parse a UBX message according to its class and id.
 // Data is populated into structures according to message class/type.
 // Currently supports the following UBX messages:
-//     NAV-PVT     Data into navPVT
+//     NAV-PVT     Data into gpsInfo
 ////////////////////////////////////////////////////////////////////////////////
 void parseUBX()
 {
-  /*Serial.println("Parsing: ");
+  /*writeLog("Parsing: ");
   for (int i=0;i<=UBXpayloadIdx;i++)
   {
-   Serial.print(UBXbuffer[i],HEX); 
+   writeLog(UBXbuffer[i],HEX); 
   }
-  Serial.println();*/
+  writeLog();*/
   
-  int i;
+  byte i;
   
   if (UBXclass == 0x01)  // Class 1 is NAV messages
   {
     if (UBXid == 0x07)  // Id 7 is the PVT (Position Velocity Time) main NAV message
     {
       i=0;
-      //navPVT.Time = join4Bytes(&UBXbuffer[i]);
+      //gpsInfo.Time = join4Bytes(&UBXbuffer[i]);
       i+=4;
-      navPVT.Year = join2Bytes(&UBXbuffer[i]);
+      //gpsInfo.Year = join2Bytes(&UBXbuffer[i]);
       i+=2;
-      navPVT.Month = UBXbuffer[i];
+      //gpsInfo.Month = UBXbuffer[i];
       i+=1;
-      navPVT.Day = UBXbuffer[i];
+      //gpsInfo.Day = UBXbuffer[i];
       i+=1;
-      navPVT.Hour = UBXbuffer[i];
+      gpsInfo.Hour = UBXbuffer[i];
       i+=1;
-      navPVT.Min = UBXbuffer[i];
+      gpsInfo.Min = UBXbuffer[i];
       i+=1;
-      navPVT.Sec = UBXbuffer[i];
+      gpsInfo.Sec = UBXbuffer[i];
       i+=1;
-      navPVT.Valid = UBXbuffer[i];
+      gpsInfo.Valid = UBXbuffer[i];
       i+=1;
-      //navPVT.TimeAcc = join4Bytes(&UBXbuffer[i]);
+      //gpsInfo.TimeAcc = join4Bytes(&UBXbuffer[i]);
       i+=4;
-      //navPVT.Nano = join4Bytes(&UBXbuffer[i]);
+      //gpsInfo.Nano = join4Bytes(&UBXbuffer[i]);
       i+=4;
-      navPVT.FixType = UBXbuffer[i];
+      gpsInfo.FixType = UBXbuffer[i];
       i+=1;
-      //navPVT.Flags = UBXbuffer[i];
+      //gpsInfo.Flags = UBXbuffer[i];
       i+=1;
-      //navPVT.Reserved1 = UBXbuffer[i];
+      //gpsInfo.Reserved1 = UBXbuffer[i];
       i+=1;
-      navPVT.numSV = UBXbuffer[i];
+      gpsInfo.numSV = UBXbuffer[i];
       i+=1;
-      navPVT.Long = join4Bytes(&UBXbuffer[i]);
+      gpsInfo.Long = join4Bytes(&UBXbuffer[i]) / 100;
       i+=4;
-      navPVT.Lat = join4Bytes(&UBXbuffer[i]);
+      gpsInfo.Lat = join4Bytes(&UBXbuffer[i]) / 100;
       i+=4;
-      //navPVT.HeightEll = join4Bytes(&UBXbuffer[i]) * 0.001;
+      //gpsInfo.HeightEll = join4Bytes(&UBXbuffer[i]) * 0.001;
       i+=4;
-      navPVT.HeightMSL = join4Bytes(&UBXbuffer[i]) * 0.001;
+      gpsInfo.HeightMSL = join4Bytes(&UBXbuffer[i]) * 0.001;
       i+=4;
-      //navPVT.HAcc = join4Bytes(&UBXbuffer[i]) * 0.001;
+      //gpsInfo.HAcc = join4Bytes(&UBXbuffer[i]) * 0.001;
       i+=4;
-      //navPVT.VAcc = join4Bytes(&UBXbuffer[i]) * 0.001;
-      i+=4;
-   /*
-     Serial.println();
-     Serial.print("Flight Time (s): ");
-     Serial.print(flightTime);
-     //Serial.print("  Time : ");     Serial.print(navPVT.Time);  //U4 unsigned long
-     Serial.print("  Year : ");     Serial.print(navPVT.Year);  //U2 unsigned short
-     Serial.print("  Month : ");     Serial.print(navPVT.Month);  //U1 unsigned char
-     Serial.print("  Day : ");     Serial.print(navPVT.Day);
-     Serial.print("  Hour : ");     Serial.print(navPVT.Hour);
-     Serial.print("  Min : ");     Serial.print(navPVT.Min);
-     Serial.print("  Sec : ");     Serial.println(navPVT.Sec);
-     Serial.print("Valid : "); //    Serial.print(navPVT.Valid);  //X1 bitfield
-     //Serial.print(" - H: ");
-     //Serial.print(navPVT.Valid,HEX);  //X1 bitfield
-     //Serial.print(" - D: ");
-     //Serial.print(navPVT.Valid,DEC);  //X1 bitfield
-     //Serial.print(" - B: ");
-     Serial.print(navPVT.Valid,BIN);  //X1 bitfield
-     //Serial.print("  TimeAcc : ");     Serial.print(navPVT.TimeAcc);  //U4 unsigned long
-     //Serial.print("  Nano : ");     Serial.print(navPVT.Nano);  //I4 signed long (2's compliment)
-     Serial.print("  FixType : ");     Serial.print(navPVT.FixType);  //U1 unsigned char
-     //Serial.print("  Flags : ");     Serial.print(navPVT.Flags);  
-     //Serial.print(" - H: ");
-     //Serial.print(navPVT.Flags,HEX);  
-     //Serial.print(" - D: ");
-     //Serial.print(navPVT.Flags,DEC);  
-     //Serial.print(" - B: ");
-     //Serial.print(navPVT.Flags,BIN); 
-     //Serial.print("  Reserved1 : ");      Serial.print(navPVT.Reserved1);
-      Serial.print("  numSV : ");      Serial.println(navPVT.numSV);
-      Serial.print("Long : ");      Serial.print(navPVT.Long);
-      Serial.print("  Lat : ");      Serial.print(navPVT.Lat);
-      //Serial.print("  HeightEll : ");      Serial.print(navPVT.HeightEll);
-      Serial.print("  HeightMSL : ");      Serial.println(navPVT.HeightMSL);
-      //Serial.print("  HAcc : ");      Serial.print(navPVT.HAcc);
-      //Serial.print("  Vacc : ");      Serial.println(navPVT.VAcc);
-      Serial.print("Internal Temp: ");
-  Serial.print(intTemp);
-  Serial.print("       External Temp: ");
-  Serial.println(extTemp);
-  
-      */
+      //gpsInfo.VAcc = join4Bytes(&UBXbuffer[i]) * 0.001;
+      
+        writeLog(dataString);
+      
     }
   }
   
@@ -290,7 +276,7 @@ boolean checkAck(unsigned char *Message)
     // Check if 3 seconds have elapsed without success
     if (millis() - startTime > 3000)
     {
-      Serial.println("FAILED!");
+      writeLog(F("FAILED!"));
       return false;
     }
     
@@ -306,14 +292,14 @@ boolean checkAck(unsigned char *Message)
         // Check if the char matches the expected ack packet char
         if (Character == ackPacket[ackIndex])
         {
-          //Serial.print(" Match ");
+          //writeLog(" Match ");
           // We have a match so move onto next ack packet char
           ackIndex++;
           
           // If we've matched all ack packet chars then we are good
           if (ackIndex > 9)
           {
-            Serial.println("Success");
+            writeLog(F("Success"));
             return true;
           }
         }
@@ -334,14 +320,13 @@ boolean checkAck(unsigned char *Message)
 // setGPSforRead()
 // Prepare the GPS by making data request
 ////////////////////////////////////////////////////////////////////////////////
-// Prepare the GPS by making data request
 void setGPSforRead()
 {
   Wire.requestFrom(GPS_ADDR, BUFFER_LENGTH);    // Request 32 bytes of data from the GPS
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// setGPSforRead()
+// setGPSforRead()  
 // Read a single char from the GPS
 ////////////////////////////////////////////////////////////////////////////////
 char readGPSchar()
@@ -377,7 +362,7 @@ boolean sendUBX(unsigned char *Message, int Length)
     {
       if (Wire.endTransmission() != 0)
       {
-        Serial.println("ERROR IN WIRE END TRANSMISSION!!!!");
+        writeLog(F("ERROR IN WIRE END TRANSMISSION!!!!"));
         return result;
       };
       
@@ -387,7 +372,7 @@ boolean sendUBX(unsigned char *Message, int Length)
     
     if (Wire.write(Message[i]) != 1)  // send the byte to the buffer
     {
-      Serial.println("ERROR IN WIRE WRITE!!!!");
+      writeLog(F("ERROR IN WIRE WRITE!!!!"));
       return result;
     }
    
@@ -395,11 +380,43 @@ boolean sendUBX(unsigned char *Message, int Length)
   
   if (Wire.endTransmission() != 0)
   {
-    Serial.println("ERROR IN WIRE END TRANSMISSION!!!!");
+    writeLog(F("ERROR IN WIRE END TRANSMISSION!!!!"));
     return result;
   };
   
   return true;    // everything ok
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// checkGPSLock()
+// Determine if we have a good GPS lock by examining the fix type and number of
+// satellites in view.
+////////////////////////////////////////////////////////////////////////////////
+void checkGPSLock()
+{
+  // Check for GPS lock.  We consider anything more than 4 satellites as good
+  if ((int)gpsInfo.FixType >= 3 && (int)gpsInfo.numSV > 4)
+  {
+    gpsLock = true;
+    lastGoodFix = gpsInfo;    // Save this good fix away in case we lose signal
+    if (timeOfLock == 0)
+    {
+      writeLog(F("GPS LOCK !! GPS LOCK !! GPS LOCK !! GPS LOCK !!"));
+      digitalWrite(GREEN_LED_PIN, HIGH);
+      timeOfLock = millis();
+    }
+    else  // already locked on
+    {
+      if (millis() > timeOfLock + 30000)  // only show the green LED for 30 seconds
+      {
+        digitalWrite(GREEN_LED_PIN, LOW);
+      }
+    }
+  }
+  else
+  {
+    gpsLock = false;
+  }
 }
 
 

@@ -17,14 +17,16 @@
 #define RTTY_BAUD 50     // Baud rate
 #define RADIO_PIN 9      // Pin must support PWM.  Pin 9 and 10 use TIMER1.
 
+unsigned int sentenceId=1;
+
 // Volatile variables are modified inside the ISR
-volatile int txStatus=1;
-volatile int txStringLength=0;
-volatile int txPos=0;
+volatile byte txStatus=1;
+volatile byte txStringLength=0;
 volatile int txDelayCount=0;
-volatile int txBitCount=0;
-volatile int txCharPos=0;
+volatile byte txBitCount=0;
+volatile byte txCharPos=0;
 volatile char txChar;
+//volatile boolean high=false;
 
 ////////////////////////////////////////////////////////////////////////////////
 // setupRadio()
@@ -90,6 +92,17 @@ void rttyTxbit (int bit)
 ////////////////////////////////////////////////////////////////////////////////
 ISR(TIMER1_COMPA_vect)
 {
+  /*if (high)
+  {
+    digitalWrite(RADIO_PIN, HIGH);
+    high=false;
+  }
+  else
+  {
+    digitalWrite(RADIO_PIN, LOW);
+    high=true;
+  }*/
+    
   switch(txStatus) 
   {
   case 0: // This is the optional delay between transmissions.
@@ -119,6 +132,7 @@ ISR(TIMER1_COMPA_vect)
     {
       txStatus=0; // Should be finished
       txCharPos=0;
+      sentenceId++;
     }
     break;
   case 3:

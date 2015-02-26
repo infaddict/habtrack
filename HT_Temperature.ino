@@ -7,91 +7,52 @@
 // Desc:    DS18B20 temperature sensor.  We have 2 sensors, internal and exteral
 ////////////////////////////////////////////////////////////////////////////////
 #include <OneWire.h>
+#include <DallasTemperature.h>
 
-const int TempInt_Pin = 2; // on pin 2 (with 4.7k resistor in series)
-const int TempExt_Pin = 4; // on pin 4 (with 4.7k resistor in series)
+// Data wire is plugged into port 2 on the Arduino
+#define ONE_WIRE_BUS 2
+#define TEMPERATURE_PRECISION 9
+
+// Setup a oneWire instance to communicate with any OneWire devices (not just Maxim/Dallas temperature ICs)
+OneWire oneWire(ONE_WIRE_BUS);
+
+// Pass our oneWire reference to Dallas Temperature. 
+DallasTemperature sensors(&oneWire);
+
+// Array to hold up to 8 device addresses
+DeviceAddress internalSensor, externalSensor;
 
 ////////////////////////////////////////////////////////////////////////////////
-// getInternalTemp()
-// Returns internal temperature in degrees celsius
-// Returns -1000 if any error occurs
+// setupTemperature()
+// Prepare the temperature sensors by detecting them and setting resolution
 ////////////////////////////////////////////////////////////////////////////////
-float getInternalTemp()
+void setupTemperature()
 {
-  return getTemp(TempInt_Pin);
+  // Start up the library
+  sensors.begin();
+
+  // Locate devices on the bus
+  writeLog(F("Locating devices...Found "));
+  String num = (String) sensors.getDeviceCount();
+  writeLog(num);
+  writeLog(F("devices."));
+
+  // Set the resolution of all sensors to 9 bit (0.5 degree precision and 78ms update time)
+  sensors.setResolution(TEMPERATURE_PRECISION);
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// getExternalTemp()
-// Returns external temperature in degrees celsius
-// Returns -1000 if any error occurs
+// checkTemperature
+// Request temperature reading from both internal and external sensors
 ////////////////////////////////////////////////////////////////////////////////
-float getExternalTemp()
+void checkTemperature()
 {
-  return getTemp(TempExt_Pin);
+  // Request the temperature from all sensors.  This won't complete until data is ready to be read.
+  sensors.requestTemperatures(); 
+  
+  // At this point the data is ready so go and read it
+  intTemp = sensors.getTempCByIndex(0);
+  extTemp = sensors.getTempCByIndex(1);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-// getTemp()
-// Returns temperature in degrees celsius for the selected pin
-// Returns -1000 if any error occurs
-////////////////////////////////////////////////////////////////////////////////
-float getTemp(unsigned int pin)
-{
-  OneWire ds(pin);
-  byte data[12];
-  byte addr[8];
-  
-  // Search for sensors on the bus
-  if (!ds.search(addr)) 
-  {
-    // No more sensors found so reset the search
-    Serial.println("No more sensors found!");
-    ds.reset_search();
-    return -1000;
-  }
-  
-  // Check the checksum of the sensor ROM id
-  if (OneWire::crc8( addr, 7) != addr[7]) 
-  {
-    Serial.println("CRC is not valid!");
-    return -1000;
-  }
-  
-  // Check what type of devie we have found
-  // 0x10 = DS18S20
-  // 0x28 = DS18B20
-  // 0x22 = S1822
-  if (addr[0] != 0x28) 
-  {
-    Serial.print("Device is not recognized");
-    return -1000;
-  }
-  
-  // What is this doing?
-  ds.reset();
-  ds.select(addr);
-  ds.write(0x44,1); // Start conversion, with parasite power on at the end
-  
-  // What is this doing?
-  byte present = ds.reset();
-  ds.select(addr);
-  ds.write(0xBE); // Read Scratchpad
-  
-  // Read 8 bytes of data
-  for (int i = 0; i < 9; i++) 
-  {
-    data[i] = ds.read();
-  }
-  
-  ds.reset_search();  // Is this required?
-  
-  byte MSB = data[1];
-  byte LSB = data[0];
-  
-  float tempRead = ((MSB << 8) | LSB); // using two's compliment
-  float TemperatureSum = tempRead / 16.0;
-  
-  return TemperatureSum;
-
-}

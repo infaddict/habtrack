@@ -6,21 +6,22 @@
 // Date:    February 2015
 // Desc:    Main module for HAB Tracker
 ////////////////////////////////////////////////////////////////////////////////
-
 #include <Wire.h>
 #include "HT_GPS.h"
-const int RED_LED_PIN = 8;
-const int GREEN_LED_PIN = 7;
-unsigned long flightTime;
+const byte RED_LED_PIN = 8;      // for fatal errors
+const byte GREEN_LED_PIN = 7;    // for GPS lock
 unsigned long timeOfLock = 0;
-NAV_PVT navPVT;
-char dataString[95];
-char txString[95];
+GPS_INFO gpsInfo;
+GPS_INFO lastGoodFix;
+char dataString[95];    // must be big enough for largest RTTY sentence
+char txString[95];      // must be big enough for largest RTTY sentence
 boolean gpsLock=false;
 float intTemp;
 float extTemp;
-float voltage=7.12;
-
+float voltage;
+long timeForGPS;
+long timeForSensors;
+boolean expectingGPSData=false;
 
 ////////////////////////////////////////////////////////////////////////////////
 // setup()
@@ -30,126 +31,131 @@ float voltage=7.12;
 void setup()
 {
   Serial.begin(115200);
-  Serial.println();
-  Serial.println("Start of setup...");
-  Serial.print("Free memory = ");
-  Serial.println(freeRam());
   
-  Wire.begin();    // Prepare wire for master mode where we control I/O  
+  Serial.println();
+  Serial.println(F("Start of setup."));
+  Serial.print(F("Free memory = "));
+  Serial.println(freeRam());
+  delay(1000);
+    
+  Serial.println(F("Preparing SD Card..."));
+  if (!setupSDCard())
+  {
+    Serial.println(F("ERROR IN SDCARD INIT!!"));
+    digitalWrite(RED_LED_PIN, HIGH);
+  }
   
   // Setup LED's and turn them off
-  Serial.println("Preparing LED's...");
+  writeLog(F("Preparing LED's..."));
   pinMode(RED_LED_PIN, OUTPUT);
   pinMode(GREEN_LED_PIN, OUTPUT);
   digitalWrite(GREEN_LED_PIN, LOW);
   digitalWrite(RED_LED_PIN, LOW);
   
+  // Prepare wire for master mode where we control I/O to GPS
+  Wire.begin();    
+   
   // Set the protocol to send and receive UBX only (disable NMEA)
-  Serial.println("Configuring TX and RX protocols");
+  writeLog(F("Configuring TX and RX protocols..."));
   if (!sendUBX(portUBX_UBX, sizeof(portUBX_UBX)))
   {
-    Serial.println("ERROR SENDING PRT UBX-UBX COMMAND!!");
+    writeLog(F("ERROR SENDING PRT UBX-UBX COMMAND!!"));
     digitalWrite(RED_LED_PIN, HIGH);
   }
   if (!checkAck(portUBX_UBX))
   {
-    Serial.println("ACK NOT REVCV FOR PRT UBX-UBX!!");
+    writeLog(F("ACK NOT REVCV FOR PRT UBX-UBX!!"));
     digitalWrite(RED_LED_PIN, HIGH);
   }
-
+  
   // Set the GPS to "Airborne <1g" mode suitable for high altitude
-  Serial.println("Setting airborne mode");
+  writeLog(F("Setting airborne mode..."));
   if (!sendUBX(airborne1g, sizeof(airborne1g)))
   {
-    Serial.println("ERROR SENDING FLIGHT MODE COMMAND!!");
+    writeLog(F("ERROR SENDING FLIGHT MODE COMMAND!!"));
     digitalWrite(RED_LED_PIN, HIGH);
   }
   if (!checkAck(airborne1g))
   {
-    Serial.println("ACK NOT RECV FOR FLIGHT MODE!!");
+    writeLog(F("ACK NOT RECV FOR FLIGHT MODE!!"));
     digitalWrite(RED_LED_PIN, HIGH);
   }
   
-  Serial.println("Preparing Radio...");
+  // Setup the Radio and interrupts for RTTY transmission
+  writeLog(F("Preparing Radio..."));
   setupRadio();
   setupInterrupt();
-   
-  Serial.println("End of setup.");
+  
+  // Setup the internal and external temperature sensors.
+  writeLog(F("Preparing Temperature Sensors..."));
+  setupTemperature();
+  
+  // Finished all setup tasks so show the green LED for 5 seconds to signal this
+  writeLog(F("End of setup."));
+  digitalWrite(GREEN_LED_PIN, HIGH);    
+  delay(5000);    
+  digitalWrite(GREEN_LED_PIN, LOW);
 }
 
 
 ////////////////////////////////////////////////////////////////////////////////
 // loop()
-// Main processing loop for Arduino
-// This loops infinitely whist Arduino is powered
+// Main processing loop for Arduino.
+// This loops infinitely whist Arduino is powered.
+// The loop is kept mostly free and we control what we want to do when with the
+// use of millis().  Requests for data will hold his loop as follows:
+//    - GPS data = 800ms to 1000ms
+//    - Temperature = <150ms
+//    - Voltage = < 50ms
 ////////////////////////////////////////////////////////////////////////////////
 void loop()
-{
-  delay(500);
-  
-  intTemp = getInternalTemp();
-  extTemp = getExternalTemp();
- 
- //TEMP STUFF
-/*
-  navPVT.Valid = 255;
-  navPVT.Year = 2015;
-  navPVT.Month = 12;
-  navPVT.Day = 31;
-  navPVT.Hour = 23;
-  navPVT.Min = 59;
-  navPVT.Sec = 59;
-  gpsLock = true;
-  navPVT.Lat =  1799001234;
-  navPVT.Long = -1799040556;
-  navPVT.HeightMSL = 42492;
-  intTemp = -20.99;
-  extTemp = -46.05;
-
-  voltage = 3.39;  
-*/
-
+{  
+  // If we've previosuly requested GPS data then go check for it arriving.
+  // This will timeout in 3 seconds if data not received.
+  // Data usually arrives in < 1 second.
+  if (expectingGPSData)
+  {
+    if (!checkForGPSData())
+    {
+      writeLog(F("ERROR READING UBX DATA!!"));
+      digitalWrite(RED_LED_PIN, HIGH);
+    }
+    
+    // Check for GPS lock.  We consider anything more than 4 satellites as good
+    checkGPSLock();
+  }
+      
+  // Set the TX string to contain current known variables
   setTXString(dataString);
-  Serial.println(dataString);
+  
+  // If it's time to ask for GPS data then do it
+  if (millis() > timeForGPS)
+  {
+    expectingGPSData = true;
+    
+    // Send request for a NAV-PVT message (position, velocity, time)
+    if (!sendUBX(reqNAV_PVT, sizeof(reqNAV_PVT)))
+    {
+      writeLog(F("ERROR SENDING NAV PVT COMMAND!!"));
+      digitalWrite(RED_LED_PIN, HIGH);
+    }
    
-  // Convert time running in milliseconds to seconds
-  flightTime = millis() * 0.001;
-  
-  // Send request for a NAV-PVT message (position, velocity, time)
-  if (!sendUBX(reqNAV_PVT, sizeof(reqNAV_PVT)))
-  {
-    Serial.println("ERROR SENDING NAV PVT COMMAND!!");
-    digitalWrite(RED_LED_PIN, HIGH);
+    // set up when we next want to do this
+    timeForGPS = millis() + 5000; 
   }
   
-  // Read any data returned by the GPS
-  if (!readUBX())
+  // If it's time to ask for sensor data then do it
+  if (millis() > timeForSensors)
   {
-    Serial.println("ERROR READING UBX DATA!!");
-    digitalWrite(RED_LED_PIN, HIGH);
+    // go and get temperature data
+    checkTemperature();
+
+    // go and get voltage data
+    voltage = getVoltage();
+    
+    // set up when we next want to do this
+    timeForSensors = millis() + 15000; 
   }
   
-  // Check for GPS lock.  We consider anything more than 4 satellites as good
-  if ((int)navPVT.FixType >= 3 && (int)navPVT.numSV > 4)
-  {
-    gpsLock = true;
-    if (timeOfLock == 0)
-    {
-      Serial.println("GPS LOCK !! GPS LOCK !! GPS LOCK !! GPS LOCK !!");
-      digitalWrite(GREEN_LED_PIN, HIGH);
-      timeOfLock = flightTime;
-    }
-    else  // already locked on
-    {
-      if (flightTime > timeOfLock + 60)  // only show the green LED for 60 seconds
-      {
-        digitalWrite(GREEN_LED_PIN, LOW);
-      }
-    }
-  }
-  else
-  {
-    gpsLock = false;
-  }
   
 }
