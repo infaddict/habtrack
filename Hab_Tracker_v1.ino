@@ -13,8 +13,8 @@ const byte GREEN_LED_PIN = 7;    // for GPS lock
 unsigned long timeOfLock = 0;
 GPS_INFO gpsInfo;
 GPS_INFO lastGoodFix;
-char dataString[95];    // must be big enough for largest RTTY sentence
-char txString[95];      // must be big enough for largest RTTY sentence
+char dataString[85];    // must be big enough for largest RTTY sentence
+char txString[85];      // must be big enough for largest RTTY sentence
 boolean gpsLock=false;
 float intTemp;
 float extTemp;
@@ -37,6 +37,13 @@ void setup()
   Serial.print(F("Free memory = "));
   Serial.println(freeRam());
   delay(1000);
+  
+  // Setup LED's and turn them off
+  Serial.println(F("Preparing LED's..."));
+  pinMode(RED_LED_PIN, OUTPUT);
+  pinMode(GREEN_LED_PIN, OUTPUT);
+  digitalWrite(GREEN_LED_PIN, LOW);
+  digitalWrite(RED_LED_PIN, LOW);
     
   Serial.println(F("Preparing SD Card..."));
   if (!setupSDCard())
@@ -44,13 +51,6 @@ void setup()
     Serial.println(F("ERROR IN SDCARD INIT!!"));
     digitalWrite(RED_LED_PIN, HIGH);
   }
-  
-  // Setup LED's and turn them off
-  writeLog(F("Preparing LED's..."));
-  pinMode(RED_LED_PIN, OUTPUT);
-  pinMode(GREEN_LED_PIN, OUTPUT);
-  digitalWrite(GREEN_LED_PIN, LOW);
-  digitalWrite(RED_LED_PIN, LOW);
   
   // Prepare wire for master mode where we control I/O to GPS
   Wire.begin();    
@@ -97,7 +97,6 @@ void setup()
   digitalWrite(GREEN_LED_PIN, LOW);
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 // loop()
 // Main processing loop for Arduino.
@@ -141,7 +140,7 @@ void loop()
     }
    
     // set up when we next want to do this
-    timeForGPS = millis() + 5000; 
+    timeForGPS = millis() + 3000; 
   }
   
   // If it's time to ask for sensor data then do it
@@ -154,7 +153,7 @@ void loop()
     voltage = getVoltage();
     
     // set up when we next want to do this
-    timeForSensors = millis() + 15000; 
+    timeForSensors = millis() + 10000; 
   }
   
   

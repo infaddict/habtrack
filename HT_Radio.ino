@@ -15,7 +15,7 @@
 #define STOPBITS 2       // Either 1 or 2
 #define TXDELAY 0        // Delay between sentence TX's
 #define RTTY_BAUD 50     // Baud rate
-#define RADIO_PIN 9      // Pin must support PWM.  Pin 9 and 10 use TIMER1.
+#define RADIO_PIN 3      // Pin must support PWM.  Pin 3 and 11 use TIMER2.
 
 unsigned int sentenceId=1;
 
@@ -26,7 +26,7 @@ volatile int txDelayCount=0;
 volatile byte txBitCount=0;
 volatile byte txCharPos=0;
 volatile char txChar;
-//volatile boolean high=false;
+volatile boolean high=false;
 
 ////////////////////////////////////////////////////////////////////////////////
 // setupRadio()
@@ -40,30 +40,44 @@ void setupRadio()
 ////////////////////////////////////////////////////////////////////////////////
 // setupInterrupt()
 // Prepares TIMER1 registers so interrupt fires at correct timing for chosen
-// baud rate.
+// baud rate, to send bits via radio.
+// Prepares TIMER2 registers for PWM.
 ////////////////////////////////////////////////////////////////////////////////
 void setupInterrupt()
 {
+  cli();          // disable global interrupts whilst we set stuff up
+ 
   // Setup TIMER1 according to chosen baud rate
   // TIMER1 is a 16 bit timer with max counter of 65535
-  // TIMER1 is used by pins 9 and 10
-  
-  cli();          // disable global interrupts whilst we set stuff up
-  
+  // We use TIMER1 to fire our ISR at correct interval according to baud rate
+  // The TIMER1 ISR will send 1 bit of data ever time it fires
+  // TIMER1 is not used for PWM, purely for timing of radio TX
+   
   TCCR1A = 0;     // set entire TCCR1A register to 0
   TCCR1B = 0;     // same for TCCR1B
   
-  OCR1A = F_CPU / 1024 / RTTY_BAUD - 1;  // set compare match register to desired timer count:
+  OCR1A = F_CPU / 1024 / RTTY_BAUD - 1;  // set TIMER1 compare match register to desired timer count:
   
-  TCCR1B |= (1 << WGM12);   // turn on CTC (Clear Timer on Compare) mode:
+  TCCR1B |= (1 << WGM12);   // turn on TIMER1 CTC (Clear Timer on Compare) mode:
   
-  // Set CS10 and CS12 bits on for 1024 pre-scaler
+  // Set TIMER1 CS10 and CS12 bits on for 1024 pre-scaler
   TCCR1B |= (1 << CS10);
   TCCR1B |= (1 << CS12);
   
   // enable timer compare interrupt:
   TIMSK1 |= (1 << OCIE1A);
   
+  // Setup TIMER2 for PWM
+  // TIMER2 is a 8 bit timer with max counter of 255
+  // We want TIMER2 to be as fast as possible (no pre-scale) to give best PWM
+  // TIMER2 has no ISR and is used by pin 3 for radio TX
+  
+  TCCR2A = 0;     // set entire TCCR2A register to 0
+  TCCR2B = 0;     // same for TCCR2B
+  
+  // Set TIMER2 CS10 on for no pre-scaler
+  TCCR2B |= (1 << CS10);
+
   sei();          // enable global interrupts
 }
 
@@ -76,13 +90,16 @@ void rttyTxbit (int bit)
   // Transmit a high or low value depending on the bit (1 or 0)
   if (bit)
   {
-    analogWrite(RADIO_PIN,110); // High
+    //Serial.print(".");
+    analogWrite(RADIO_PIN,164); // High
   }
   else
   {
-    analogWrite(RADIO_PIN,100); // Low
+    //Serial.print(" ");
+    analogWrite(RADIO_PIN,148); // Low
   }
 }
+
 ////////////////////////////////////////////////////////////////////////////////
 // ISR()
 // Interrupt Service Routine for TIMER1
@@ -92,17 +109,21 @@ void rttyTxbit (int bit)
 ////////////////////////////////////////////////////////////////////////////////
 ISR(TIMER1_COMPA_vect)
 {
-  /*if (high)
+  //analogWrite(RADIO_PIN,128);
+ /* 
+  if (high)
   {
-    digitalWrite(RADIO_PIN, HIGH);
+    //digitalWrite(RADIO_PIN, HIGH);
+    analogWrite(RADIO_PIN,255);
     high=false;
   }
   else
   {
-    digitalWrite(RADIO_PIN, LOW);
+    //digitalWrite(RADIO_PIN, LOW);
+    analogWrite(RADIO_PIN,0);
     high=true;
-  }*/
-    
+  }
+ */ 
   switch(txStatus) 
   {
   case 0: // This is the optional delay between transmissions.

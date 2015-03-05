@@ -397,11 +397,16 @@ void checkGPSLock()
   // Check for GPS lock.  We consider anything more than 4 satellites as good
   if ((int)gpsInfo.FixType >= 3 && (int)gpsInfo.numSV > 4)
   {
-    gpsLock = true;
-    lastGoodFix = gpsInfo;    // Save this good fix away in case we lose signal
-    if (timeOfLock == 0)
+    if (!gpsLock) 
     {
-      writeLog(F("GPS LOCK !! GPS LOCK !! GPS LOCK !! GPS LOCK !!"));
+      gpsLock = true;
+      writeLog(F("GPS LOCK !! GPS LOCK !!"));
+    }
+    
+    lastGoodFix = gpsInfo;    // Save this good fix away in case we lose signal
+    
+    if (timeOfLock == 0)
+    {     
       digitalWrite(GREEN_LED_PIN, HIGH);
       timeOfLock = millis();
     }
@@ -415,7 +420,13 @@ void checkGPSLock()
   }
   else
   {
+    if (gpsLock)    // we had a lock then lost it
+    {
+      writeLog(F("!! LOST LOCK !!"));
+    }
+    
     gpsLock = false;
+    
   }
 }
 

@@ -66,12 +66,12 @@ void setTXString(char *msg)
   // Sentence id  00000
   // No of sats   00
   // Time         00:00:00 (hours, minutes, seconds)
-  // Latitude     +-000.00000 (degrees)
-  // Longtitude   +-000.00000 (degrees)
-  // Altitude     +-000000 (metres)
-  // Int Temp     +-00.00 (degrees celsius)
-  // Ext Temp     +-00.00 (degrees celsius)
-  // Voltage      +-00.00 (volts)
+  // Latitude     -0000000 (degrees)
+  // Longtitude   -0000000 (degrees)
+  // Altitude     -000000 (metres)
+  // Int Temp     -00.00 (degrees celsius)
+  // Ext Temp     -00.00 (degrees celsius)
+  // Voltage      -00.00 (volts)
   
   unsigned int checkSum;
   char checkSumStr[5+1];
