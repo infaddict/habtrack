@@ -154,7 +154,14 @@ boolean checkForGPSData()
   // Only when received all expected data with checksum do we stop
   expectingGPSData = false;
 
-  return true;  // everything ok
+  if (timeout)
+  {
+    return false; // timeout
+  }
+  else
+  {
+    return true;  // everything ok
+  }
     
 }
 
@@ -166,14 +173,7 @@ boolean checkForGPSData()
 //     NAV-PVT     Data into gpsInfo
 ////////////////////////////////////////////////////////////////////////////////
 void parseUBX()
-{
-  /*writeLog("Parsing: ");
-  for (int i=0;i<=UBXpayloadIdx;i++)
-  {
-   writeLog(UBXbuffer[i],HEX); 
-  }
-  writeLog();*/
-  
+{  
   byte i;
   
   if (UBXclass == 0x01)  // Class 1 is NAV messages
@@ -195,7 +195,7 @@ void parseUBX()
       i+=1;
       gpsInfo.Sec = UBXbuffer[i];
       i+=1;
-      gpsInfo.Valid = UBXbuffer[i];
+      //gpsInfo.Valid = UBXbuffer[i];
       i+=1;
       //gpsInfo.TimeAcc = join4Bytes(&UBXbuffer[i]);
       i+=4;
@@ -203,7 +203,7 @@ void parseUBX()
       i+=4;
       gpsInfo.FixType = UBXbuffer[i];
       i+=1;
-      //gpsInfo.Flags = UBXbuffer[i];
+      gpsInfo.FixFlags = UBXbuffer[i];
       i+=1;
       //gpsInfo.Reserved1 = UBXbuffer[i];
       i+=1;
@@ -220,8 +220,8 @@ void parseUBX()
       //gpsInfo.HAcc = join4Bytes(&UBXbuffer[i]) * 0.001;
       i+=4;
       //gpsInfo.VAcc = join4Bytes(&UBXbuffer[i]) * 0.001;
-      
-        writeLog(dataString);
+    
+     writeLog(dataString);
       
     }
   }
@@ -389,13 +389,15 @@ boolean sendUBX(unsigned char *Message, int Length)
 
 ////////////////////////////////////////////////////////////////////////////////
 // checkGPSLock()
-// Determine if we have a good GPS lock by examining the fix type and number of
-// satellites in view.
+// Determine if we have a good GPS lock by examining the fix type, fix flags
+// and number of satellites in view.
 ////////////////////////////////////////////////////////////////////////////////
 void checkGPSLock()
 {
-  // Check for GPS lock.  We consider anything more than 4 satellites as good
-  if ((int)gpsInfo.FixType >= 3 && (int)gpsInfo.numSV > 4)
+  // Check for GPS lock.  
+  if ( ((int)gpsInfo.FixType == 3 || (int)gpsInfo.FixType == 4 )   // Fix type is 3 (3D) or 4 (GNSS + Dead Reckoning)
+       && (int)gpsInfo.numSV > 4                                   // More than 4 satellites
+       && (gpsInfo.FixFlags & (1 << 0)) )                          // Valid fix within DOP and accuracy masks
   {
     if (!gpsLock) 
     {

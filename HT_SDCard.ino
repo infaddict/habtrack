@@ -6,13 +6,14 @@
 // Date:    February 2015
 // Desc:    SD Card data logger
 ////////////////////////////////////////////////////////////////////////////////
+
+#ifdef SDLOG    // Use the SDLOG definition to control whether we include SD header & variables
 #include <SdFat.h>
-
 #define SD_SS_PIN 10      // CS/SS pin
-
 SdFat sd;
 SdFile myFile;
 char fileName[12+1]; 
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 // setupSDCard()
@@ -20,8 +21,9 @@ char fileName[12+1];
 // number.
 // Returns true if all good or false if there is a problem.
 ////////////////////////////////////////////////////////////////////////////////
+#ifdef SDLOG    // Use the SDLOG definition to control whether we include this routine
 boolean setupSDCard()
-{
+{  
   // Prepare for SD card
   if (!sd.begin(SD_SS_PIN, SPI_HALF_SPEED)) 
   {
@@ -42,7 +44,9 @@ boolean setupSDCard()
       return true;
     }
   }
+  
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 // writeLog()
@@ -50,6 +54,8 @@ boolean setupSDCard()
 ////////////////////////////////////////////////////////////////////////////////
 void writeLog(String data)
 {
+  #ifdef SDLOG    // Use the SDLOG definition to control whether we open & write to SD card
+  
   // Open the file.  It should not exist first time thru, so create it.
   // Subsequent times thru, open it and move to end of file.
   if (!myFile.open(fileName, O_WRITE | O_CREAT | O_AT_END)) 
@@ -62,6 +68,8 @@ void writeLog(String data)
     myFile.println(data);
     myFile.close();
   }
+  
+  #endif
   
   // Write the same data to the serial port
   Serial.println(data); 

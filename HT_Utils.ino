@@ -59,7 +59,7 @@ int freeRam(void)
 // setTXString()
 // Prepares the message string to be sent via RTTY.  
 ////////////////////////////////////////////////////////////////////////////////
-void setTXString(char *msg)
+void setDataString()
 {
   // Sentence format is comma separated:
   // $$payload    $$INFCU1
@@ -73,14 +73,9 @@ void setTXString(char *msg)
   // Ext Temp     -00.00 (degrees celsius)
   // Voltage      -00.00 (volts)
   
-  unsigned int checkSum;
+  uint16_t checkSum;
   char checkSumStr[5+1];
-  //char ctime[8+1];
-  //long left;
-  //long right;
-  //char clat[10+1];
-  //char clon[10+1];
-  //char calt[7+1];
+  char temp[TX_SIZE];
   char cintTemp[5+1];
   char cextTemp[5+1];
   char cvoltage[5+1];
@@ -90,37 +85,22 @@ void setTXString(char *msg)
   dtostrf(extTemp, 2, 1, cextTemp);    
   dtostrf(voltage, 2, 1, cvoltage);
 
-    /*
-    sprintf(cdate, "%04u%02u%02u", gpsInfo.Year, gpsInfo.Month, gpsInfo.Day);
-    sprintf(ctime, "%02u:%02u:%02u", gpsInfo.Hour, gpsInfo.Min, gpsInfo.Sec);
-    
-   left = gpsInfo.Lat / LatLongFactor;
-   right = abs((gpsInfo.Lat - (left * LatLongFactor)) / 100);
-   sprintf(clat, "%03li.%05lu", left, right);
-   
-   left = gpsInfo.Long / LatLongFactor;
-   right = abs((gpsInfo.Long - (left * LatLongFactor)) / 100);
-   sprintf(clon, "%03li.%05lu", left, right);  
-  
-   sprintf(calt, "%06li", gpsInfo.HeightMSL); 
-   */
-  //sprintf(msg,"$$INFCU1,%4i,%2u,%02u:%02u:%02u,%10li,%10li,%6li,%s,%s,%s", sentenceId,  gpsInfo.numSV, gpsInfo.Hour, gpsInfo.Min, gpsInfo.Sec, gpsInfo.Lat, gpsInfo.Long, gpsInfo.HeightMSL, cintTemp, cextTemp, cvoltage);
-  
   if (gpsLock)
   {
     // We have a good GPS lock so use GPS information to send via radio
-    sprintf(msg,"$$INFCU1,%i,%u,%02u:%02u:%02u,%li,%li,%li,%s,%s,%s", sentenceId,  gpsInfo.numSV, gpsInfo.Hour, gpsInfo.Min, gpsInfo.Sec, gpsInfo.Lat, gpsInfo.Long, gpsInfo.HeightMSL, cintTemp, cextTemp, cvoltage);
+    snprintf(temp,80,"$$INFCU1,%i,%u,%02u:%02u:%02u,%li,%li,%li,%s,%s,%s", sentenceId,  gpsInfo.numSV, gpsInfo.Hour, gpsInfo.Min, gpsInfo.Sec, gpsInfo.Lat, gpsInfo.Long, gpsInfo.HeightMSL, cintTemp, cextTemp, cvoltage);
   }
   else
   {
     // We have no GPS lock, either because we've never had one or we've lost it, so use last known good info
-    sprintf(msg,"$$INFCU1,%i,%u,%02u:%02u:%02u,%li,%li,%li,%s,%s,%s", sentenceId,  gpsInfo.numSV, gpsInfo.Hour, gpsInfo.Min, gpsInfo.Sec, lastGoodFix.Lat, lastGoodFix.Long, lastGoodFix.HeightMSL, cintTemp, cextTemp, cvoltage);
+    snprintf(temp,80,"$$INFCU1,%i,%u,%02u:%02u:%02u,%li,%li,%li,%s,%s,%s", sentenceId,  gpsInfo.numSV, gpsInfo.Hour, gpsInfo.Min, gpsInfo.Sec, lastGoodFix.Lat, lastGoodFix.Long, lastGoodFix.HeightMSL, cintTemp, cextTemp, cvoltage);
   }
     
   // Create a checksum and add to end of the sentence
-  checkSum = gpsCRC16Checksum(msg);  
+  checkSum = gpsCRC16Checksum(temp);  
   sprintf(checkSumStr, "*%04X\n", checkSum);  // Format the checksum correctly
-  strcat(msg,checkSumStr);  
+  strcat(temp,checkSumStr);
+  strcpy(dataString,temp);  
 
 }
 

@@ -23,8 +23,8 @@ struct GPS_INFO
   unsigned char Hour;
   unsigned char Min;
   unsigned char Sec;
-  unsigned char Valid;
   unsigned char FixType;
+  unsigned char FixFlags;
   unsigned char numSV;
   long Long;
   long Lat;

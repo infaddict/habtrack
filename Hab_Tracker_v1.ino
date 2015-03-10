@@ -6,22 +6,28 @@
 // Date:    February 2015
 // Desc:    Main module for HAB Tracker
 ////////////////////////////////////////////////////////////////////////////////
+
+#define SDLOG 1    // enable SD card logging (comment out this line to disable)
+
 #include <Wire.h>
+#include <util/crc16.h>
 #include "HT_GPS.h"
-const byte RED_LED_PIN = 8;      // for fatal errors
-const byte GREEN_LED_PIN = 7;    // for GPS lock
+
+const byte TX_SIZE = 85;        // must be big enough for largest RTTY sentence
+const byte RED_LED_PIN = 8;     // for fatal errors
+const byte GREEN_LED_PIN = 7;   // for end of setup, then later GPS lock
 unsigned long timeOfLock = 0;
 GPS_INFO gpsInfo;
 GPS_INFO lastGoodFix;
-char dataString[85];    // must be big enough for largest RTTY sentence
-char txString[85];      // must be big enough for largest RTTY sentence
 boolean gpsLock=false;
-float intTemp;
-float extTemp;
-float voltage;
-long timeForGPS;
-long timeForSensors;
+float intTemp=0;
+float extTemp=0;
+float voltage=0;
+long timeForGPS=0;
+long timeForSensors=0;
 boolean expectingGPSData=false;
+char dataString[TX_SIZE];        
+volatile char txString[TX_SIZE];   // defined as volatile as this is updated in the ISR     
 
 ////////////////////////////////////////////////////////////////////////////////
 // setup()
@@ -44,13 +50,15 @@ void setup()
   pinMode(GREEN_LED_PIN, OUTPUT);
   digitalWrite(GREEN_LED_PIN, LOW);
   digitalWrite(RED_LED_PIN, LOW);
-    
+   
+  #ifdef SDLOG
   Serial.println(F("Preparing SD Card..."));
   if (!setupSDCard())
   {
     Serial.println(F("ERROR IN SDCARD INIT!!"));
     digitalWrite(RED_LED_PIN, HIGH);
   }
+  #endif
   
   // Prepare wire for master mode where we control I/O to GPS
   Wire.begin();    
@@ -95,7 +103,9 @@ void setup()
   digitalWrite(GREEN_LED_PIN, HIGH);    
   delay(5000);    
   digitalWrite(GREEN_LED_PIN, LOW);
+  
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // loop()
@@ -109,6 +119,9 @@ void setup()
 ////////////////////////////////////////////////////////////////////////////////
 void loop()
 {  
+  // Set the TX string to contain current known variables
+  setDataString();
+  
   // If we've previosuly requested GPS data then go check for it arriving.
   // This will timeout in 3 seconds if data not received.
   // Data usually arrives in < 1 second.
@@ -123,10 +136,7 @@ void loop()
     // Check for GPS lock.  We consider anything more than 4 satellites as good
     checkGPSLock();
   }
-      
-  // Set the TX string to contain current known variables
-  setTXString(dataString);
-  
+        
   // If it's time to ask for GPS data then do it
   if (millis() > timeForGPS)
   {
@@ -142,7 +152,7 @@ void loop()
     // set up when we next want to do this
     timeForGPS = millis() + 3000; 
   }
-  
+    
   // If it's time to ask for sensor data then do it
   if (millis() > timeForSensors)
   {
@@ -155,6 +165,5 @@ void loop()
     // set up when we next want to do this
     timeForSensors = millis() + 10000; 
   }
-  
   
 }

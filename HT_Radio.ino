@@ -17,16 +17,14 @@
 #define RTTY_BAUD 50     // Baud rate
 #define RADIO_PIN 3      // Pin must support PWM.  Pin 3 and 11 use TIMER2.
 
-unsigned int sentenceId=1;
-
 // Volatile variables are modified inside the ISR
-volatile byte txStatus=1;
+volatile unsigned int sentenceId=1;
+volatile byte txStatus=0;
 volatile byte txStringLength=0;
-volatile int txDelayCount=0;
+volatile int  txDelayCount=0;
 volatile byte txBitCount=0;
 volatile byte txCharPos=0;
 volatile char txChar;
-volatile boolean high=false;
 
 ////////////////////////////////////////////////////////////////////////////////
 // setupRadio()
@@ -71,13 +69,8 @@ void setupInterrupt()
   // TIMER2 is a 8 bit timer with max counter of 255
   // We want TIMER2 to be as fast as possible (no pre-scale) to give best PWM
   // TIMER2 has no ISR and is used by pin 3 for radio TX
+  TCCR2B = TCCR2B & 0b11111000 | 0x01;
   
-  TCCR2A = 0;     // set entire TCCR2A register to 0
-  TCCR2B = 0;     // same for TCCR2B
-  
-  // Set TIMER2 CS10 on for no pre-scaler
-  TCCR2B |= (1 << CS10);
-
   sei();          // enable global interrupts
 }
 
@@ -91,12 +84,12 @@ void rttyTxbit (int bit)
   if (bit)
   {
     //Serial.print(".");
-    analogWrite(RADIO_PIN,164); // High
+    analogWrite(RADIO_PIN,115); // High
   }
   else
   {
     //Serial.print(" ");
-    analogWrite(RADIO_PIN,148); // Low
+    analogWrite(RADIO_PIN,100); // Low
   }
 }
 
@@ -109,21 +102,6 @@ void rttyTxbit (int bit)
 ////////////////////////////////////////////////////////////////////////////////
 ISR(TIMER1_COMPA_vect)
 {
-  //analogWrite(RADIO_PIN,128);
- /* 
-  if (high)
-  {
-    //digitalWrite(RADIO_PIN, HIGH);
-    analogWrite(RADIO_PIN,255);
-    high=false;
-  }
-  else
-  {
-    //digitalWrite(RADIO_PIN, LOW);
-    analogWrite(RADIO_PIN,0);
-    high=true;
-  }
- */ 
   switch(txStatus) 
   {
   case 0: // This is the optional delay between transmissions.
@@ -135,8 +113,8 @@ ISR(TIMER1_COMPA_vect)
     }
     break; // SHOULD THIS BE HERE???!!!
   case 1: // Initialise transmission, take a copy of the string so it doesn't change mid transmission. 
-    strcpy(txString,dataString);
-    txStringLength=strlen(txString);
+    strcpy((char*)txString,dataString);
+    txStringLength=strlen((char*)txString);
     txStatus=2;
     txCharPos=0;
     break;
@@ -192,5 +170,6 @@ ISR(TIMER1_COMPA_vect)
     }
  
   }
+  
   
 }
