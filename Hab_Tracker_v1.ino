@@ -25,6 +25,7 @@ float extTemp=0;
 float voltage=0;
 long timeForGPS=0;
 long timeForSensors=0;
+long timeForFlightMode=180000;  // 3 minutes
 boolean expectingGPSData=false;
 char dataString[TX_SIZE];        
 volatile char txString[TX_SIZE];   // defined as volatile as this is updated in the ISR     
@@ -77,18 +78,8 @@ void setup()
   }
   
   // Set the GPS to "Airborne <1g" mode suitable for high altitude
-  writeLog(F("Setting airborne mode..."));
-  if (!sendUBX(airborne1g, sizeof(airborne1g)))
-  {
-    writeLog(F("ERROR SENDING FLIGHT MODE COMMAND!!"));
-    digitalWrite(RED_LED_PIN, HIGH);
-  }
-  if (!checkAck(airborne1g))
-  {
-    writeLog(F("ACK NOT RECV FOR FLIGHT MODE!!"));
-    digitalWrite(RED_LED_PIN, HIGH);
-  }
-  
+  setFlightMode();
+
   // Setup the Radio and interrupts for RTTY transmission
   writeLog(F("Preparing Radio..."));
   setupRadio();
@@ -114,11 +105,13 @@ void setup()
 // The loop is kept mostly free and we control what we want to do when with the
 // use of millis().  Requests for data will hold his loop as follows:
 //    - GPS data = 800ms to 1000ms
+//    - Flight mode = 800ms to 1000ms
 //    - Temperature = <150ms
 //    - Voltage = < 50ms
 ////////////////////////////////////////////////////////////////////////////////
 void loop()
 {  
+  
   // Set the TX string to contain current known variables
   setDataString();
   
@@ -127,6 +120,7 @@ void loop()
   // Data usually arrives in < 1 second.
   if (expectingGPSData)
   {
+    
     if (!checkForGPSData())
     {
       writeLog(F("ERROR READING UBX DATA!!"));
@@ -135,8 +129,9 @@ void loop()
     
     // Check for GPS lock.  We consider anything more than 4 satellites as good
     checkGPSLock();
+    
   }
-        
+     
   // If it's time to ask for GPS data then do it
   if (millis() > timeForGPS)
   {
@@ -150,7 +145,7 @@ void loop()
     }
    
     // set up when we next want to do this
-    timeForGPS = millis() + 3000; 
+    timeForGPS = millis() + 3000;   // 3 seconds
   }
     
   // If it's time to ask for sensor data then do it
@@ -163,7 +158,16 @@ void loop()
     voltage = getVoltage();
     
     // set up when we next want to do this
-    timeForSensors = millis() + 10000; 
+    timeForSensors = millis() + 10000;   // 10 seconds
+  }
+  
+  // If it's time to set the flight mode then do it
+  // Note that the GPS should remain in flight mode from the setup
+  // This is just a precaution in case of a reboot midair or other issue
+  if (millis() > timeForFlightMode)
+  {
+    setFlightMode();
+    timeForFlightMode = millis() + 180000;  // 3 minutes 
   }
   
 }

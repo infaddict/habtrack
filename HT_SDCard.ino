@@ -55,7 +55,7 @@ boolean setupSDCard()
 void writeLog(String data)
 {
   #ifdef SDLOG    // Use the SDLOG definition to control whether we open & write to SD card
-  
+
   // Open the file.  It should not exist first time thru, so create it.
   // Subsequent times thru, open it and move to end of file.
   if (!myFile.open(fileName, O_WRITE | O_CREAT | O_AT_END)) 

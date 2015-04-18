@@ -21,6 +21,26 @@ unsigned char UBXbuffer[UBX_MAX_PAYLOAD];
 unsigned char UBXckA;
 unsigned char UBXckB;
 
+
+////////////////////////////////////////////////////////////////////////////////
+// setFlightMode()
+// Sets the GPS to Airborne/Flight mode for accurate positioning above 12,500m
+////////////////////////////////////////////////////////////////////////////////
+void setFlightMode()
+{
+  writeLog(F("Setting airborne mode..."));
+  if (!sendUBX(airborne1g, sizeof(airborne1g)))
+  {
+    writeLog(F("ERROR SENDING FLIGHT MODE COMMAND!!"));
+    digitalWrite(RED_LED_PIN, HIGH);
+  }
+  if (!checkAck(airborne1g))
+  {
+    writeLog(F("ACK NOT RECV FOR FLIGHT MODE!!"));
+    digitalWrite(RED_LED_PIN, HIGH);
+  }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // readUBX()
 // Requests the maximum buffer length from the GPS and reads the data.

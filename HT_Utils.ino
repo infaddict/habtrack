@@ -74,7 +74,7 @@ void setDataString()
   // Voltage      -00.00 (volts)
   
   uint16_t checkSum;
-  char checkSumStr[5+1];
+  char checkSumStr[6+1];  // includes \n char on end
   char temp[TX_SIZE];
   char cintTemp[5+1];
   char cextTemp[5+1];
@@ -95,9 +95,9 @@ void setDataString()
     // We have no GPS lock, either because we've never had one or we've lost it, so use last known good info
     snprintf(temp,80,"$$INFCU1,%i,%u,%02u:%02u:%02u,%li,%li,%li,%s,%s,%s", sentenceId,  gpsInfo.numSV, gpsInfo.Hour, gpsInfo.Min, gpsInfo.Sec, lastGoodFix.Lat, lastGoodFix.Long, lastGoodFix.HeightMSL, cintTemp, cextTemp, cvoltage);
   }
-    
+   
   // Create a checksum and add to end of the sentence
-  checkSum = gpsCRC16Checksum(temp);  
+  checkSum = gpsCRC16Checksum(temp);   
   sprintf(checkSumStr, "*%04X\n", checkSum);  // Format the checksum correctly
   strcat(temp,checkSumStr);
   strcpy(dataString,temp);  
