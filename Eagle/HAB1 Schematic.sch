@@ -170,12 +170,6 @@ You are welcome to use this library for commercial purposes. For attribution, we
 <pad name="A7" x="4.7625" y="-6.50875" drill="1.016" diameter="1.8796"/>
 <pad name="A5" x="4.7625" y="3.96875" drill="1.016" diameter="1.8796"/>
 <pad name="A4" x="4.7625" y="1.42875" drill="1.016" diameter="1.8796"/>
-<pad name="BLK" x="-6.35" y="15.24" drill="1.016" diameter="1.8796"/>
-<pad name="GND" x="-3.81" y="15.24" drill="1.016" diameter="1.8796"/>
-<pad name="VCC" x="-1.27" y="15.24" drill="1.016" diameter="1.8796"/>
-<pad name="RXI" x="1.27" y="15.24" drill="1.016" diameter="1.8796"/>
-<pad name="TXO" x="3.81" y="15.24" drill="1.016" diameter="1.8796"/>
-<pad name="GRN" x="6.35" y="15.24" drill="1.016" diameter="1.8796"/>
 </package>
 </packages>
 <symbols>
@@ -5380,12 +5374,12 @@ distributor RS 112-3794</description>
 <packages>
 <package name="HAB-BO-M8PICO">
 <description>HAB Supplies uBlox M8C Pico breakout board (product code HAB-BO-M8PICO-ASSY).</description>
-<pad name="1" x="-5.08" y="-8.89" drill="0.8" shape="octagon"/>
-<pad name="2" x="-2.54" y="-8.89" drill="0.8" shape="octagon"/>
-<pad name="3" x="0" y="-8.89" drill="0.8" shape="octagon"/>
-<pad name="4" x="2.54" y="-8.89" drill="0.8" shape="octagon"/>
-<pad name="5" x="5.08" y="-8.89" drill="0.8" shape="octagon"/>
-<pad name="6" x="7.62" y="-8.89" drill="0.8" shape="octagon"/>
+<pad name="1" x="-5.08" y="-8.89" drill="1.016" diameter="1.8796"/>
+<pad name="2" x="-2.54" y="-8.89" drill="1.016" diameter="1.8796"/>
+<pad name="3" x="0" y="-8.89" drill="1.016" diameter="1.8796"/>
+<pad name="4" x="2.54" y="-8.89" drill="1.016" diameter="1.8796"/>
+<pad name="5" x="5.08" y="-8.89" drill="1.016" diameter="1.8796"/>
+<pad name="6" x="7.62" y="-8.89" drill="1.016" diameter="1.8796"/>
 <wire x1="-6.35" y1="-10.16" x2="8.89" y2="-10.16" width="0.127" layer="51"/>
 <wire x1="8.89" y1="-10.16" x2="8.89" y2="20.32" width="0.127" layer="51"/>
 <wire x1="8.89" y1="20.32" x2="-6.35" y2="20.32" width="0.127" layer="51"/>
@@ -5854,8 +5848,8 @@ Standard 7-pin 0.1" header. Use with straight break away headers (SKU : PRT-0011
 </classes>
 <parts>
 <part name="ARDUINO" library="SparkFun-Boards" deviceset="ARDUINO_PRO_MINI" device=""/>
-<part name="R1" library="rcl" deviceset="R-EU_" device="0204/5" value="100"/>
-<part name="R2" library="rcl" deviceset="R-EU_" device="0204/5" value="50"/>
+<part name="R1" library="rcl" deviceset="R-EU_" device="0204/5" value="10K"/>
+<part name="R2" library="rcl" deviceset="R-EU_" device="0204/5" value="4K7"/>
 <part name="R3" library="rcl" deviceset="R-EU_" device="0204/5" value="4K7"/>
 <part name="R4" library="rcl" deviceset="R-EU_" device="0204/5" value="58"/>
 <part name="R5" library="rcl" deviceset="R-EU_" device="0204/5" value="58"/>
@@ -5872,12 +5866,13 @@ Standard 7-pin 0.1" header. Use with straight break away headers (SKU : PRT-0011
 <part name="D5" library="wirepad" deviceset="1,6/0,8" device="" value="D5"/>
 <part name="D6" library="wirepad" deviceset="1,6/0,8" device="" value="D6"/>
 <part name="D9" library="wirepad" deviceset="1,6/0,8" device="" value="D9"/>
-<part name="A7" library="wirepad" deviceset="1,6/0,8" device="" value="A7"/>
-<part name="A6" library="wirepad" deviceset="1,6/0,8" device="" value="A6"/>
 <part name="A0" library="wirepad" deviceset="1,6/0,8" device="" value="A0"/>
 <part name="A1" library="wirepad" deviceset="1,6/0,8" device="" value="A1"/>
 <part name="A3" library="wirepad" deviceset="1,6/0,8" device="" value="A3"/>
 <part name="RST" library="wirepad" deviceset="1,6/0,8" device="" value="RST"/>
+<part name="GND" library="wirepad" deviceset="1,6/0,8" device="" value="GND"/>
+<part name="VCC" library="wirepad" deviceset="1,6/0,8" device="" value="VCC"/>
+<part name="RAW" library="wirepad" deviceset="1,6/0,8" device="" value="RAW"/>
 </parts>
 <sheets>
 <sheet>
@@ -5903,12 +5898,13 @@ Standard 7-pin 0.1" header. Use with straight break away headers (SKU : PRT-0011
 <instance part="D5" gate="P" x="60.96" y="20.32"/>
 <instance part="D6" gate="P" x="60.96" y="15.24"/>
 <instance part="D9" gate="P" x="60.96" y="10.16"/>
-<instance part="A7" gate="P" x="101.6" y="81.28"/>
-<instance part="A6" gate="P" x="101.6" y="76.2"/>
 <instance part="A0" gate="P" x="101.6" y="86.36"/>
 <instance part="A1" gate="P" x="101.6" y="91.44"/>
 <instance part="A3" gate="P" x="101.6" y="96.52"/>
 <instance part="RST" gate="P" x="60.96" y="5.08"/>
+<instance part="GND" gate="P" x="116.84" y="96.52"/>
+<instance part="VCC" gate="P" x="116.84" y="86.36"/>
+<instance part="RAW" gate="P" x="116.84" y="76.2"/>
 </instances>
 <busses>
 </busses>
@@ -5943,6 +5939,11 @@ Standard 7-pin 0.1" header. Use with straight break away headers (SKU : PRT-0011
 <pinref part="JP1" gate="G$1" pin="3"/>
 <wire x1="99.06" y1="35.56" x2="99.06" y2="38.1" width="0.1524" layer="91"/>
 <label x="99.06" y="38.1" size="1.778" layer="95" rot="R90" xref="yes"/>
+</segment>
+<segment>
+<pinref part="VCC" gate="P" pin="P"/>
+<wire x1="119.38" y1="86.36" x2="121.92" y2="86.36" width="0.1524" layer="91"/>
+<label x="121.92" y="86.36" size="1.778" layer="95" xref="yes"/>
 </segment>
 </net>
 <net name="GND" class="0">
@@ -6016,6 +6017,11 @@ Standard 7-pin 0.1" header. Use with straight break away headers (SKU : PRT-0011
 <wire x1="53.34" y1="66.04" x2="50.8" y2="71.12" width="0.1524" layer="91"/>
 <label x="50.8" y="71.12" size="1.778" layer="95" rot="R180" xref="yes"/>
 </segment>
+<segment>
+<pinref part="GND" gate="P" pin="P"/>
+<wire x1="119.38" y1="96.52" x2="121.92" y2="96.52" width="0.1524" layer="91"/>
+<label x="121.92" y="96.52" size="1.778" layer="95" xref="yes"/>
+</segment>
 </net>
 <net name="RAW" class="0">
 <segment>
@@ -6042,6 +6048,11 @@ Standard 7-pin 0.1" header. Use with straight break away headers (SKU : PRT-0011
 <wire x1="7.62" y1="40.64" x2="17.78" y2="25.4" width="0.1524" layer="91"/>
 <label x="17.78" y="25.4" size="1.778" layer="95" xref="yes"/>
 <pinref part="U$3" gate="G$1" pin="EN"/>
+</segment>
+<segment>
+<pinref part="RAW" gate="P" pin="P"/>
+<wire x1="119.38" y1="76.2" x2="121.92" y2="76.2" width="0.1524" layer="91"/>
+<label x="121.92" y="76.2" size="1.778" layer="95" xref="yes"/>
 </segment>
 </net>
 <net name="A2" class="0">
@@ -6241,30 +6252,6 @@ Standard 7-pin 0.1" header. Use with straight break away headers (SKU : PRT-0011
 <label x="78.74" y="55.88" size="1.778" layer="95" xref="yes"/>
 </segment>
 </net>
-<net name="A7" class="0">
-<segment>
-<pinref part="A7" gate="P" pin="P"/>
-<wire x1="104.14" y1="81.28" x2="106.68" y2="81.28" width="0.1524" layer="91"/>
-<label x="106.68" y="81.28" size="1.778" layer="95" xref="yes"/>
-</segment>
-<segment>
-<pinref part="ARDUINO" gate="G$1" pin="A7"/>
-<wire x1="76.2" y1="40.64" x2="78.74" y2="40.64" width="0.1524" layer="91"/>
-<label x="78.74" y="40.64" size="1.778" layer="95" xref="yes"/>
-</segment>
-</net>
-<net name="A6" class="0">
-<segment>
-<pinref part="A6" gate="P" pin="P"/>
-<wire x1="104.14" y1="76.2" x2="106.68" y2="76.2" width="0.1524" layer="91"/>
-<label x="106.68" y="76.2" size="1.778" layer="95" xref="yes"/>
-</segment>
-<segment>
-<pinref part="ARDUINO" gate="G$1" pin="A6"/>
-<wire x1="76.2" y1="38.1" x2="78.74" y2="38.1" width="0.1524" layer="91"/>
-<label x="78.74" y="38.1" size="1.778" layer="95" xref="yes"/>
-</segment>
-</net>
 <net name="RST" class="0">
 <segment>
 <pinref part="RST" gate="P" pin="P"/>
@@ -6275,11 +6262,6 @@ Standard 7-pin 0.1" header. Use with straight break away headers (SKU : PRT-0011
 <pinref part="ARDUINO" gate="G$1" pin="RST@2"/>
 <wire x1="76.2" y1="68.58" x2="78.74" y2="68.58" width="0.1524" layer="91"/>
 <label x="78.74" y="68.58" size="1.778" layer="95" xref="yes"/>
-</segment>
-<segment>
-<pinref part="ARDUINO" gate="G$1" pin="RST"/>
-<wire x1="53.34" y1="68.58" x2="50.8" y2="86.36" width="0.1524" layer="91"/>
-<label x="50.8" y="86.36" size="1.778" layer="95" rot="R180" xref="yes"/>
 </segment>
 </net>
 <net name="D9" class="0">
